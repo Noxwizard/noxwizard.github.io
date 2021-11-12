@@ -152,10 +152,10 @@ mov     ecx, [eax+PEB.Ldr]
 mov     edx, [ecx+PEB_LDR_DATA.InInitializationOrderModuleList.Flink]
 mov     [ebp+peb_module_list], edx
 </code></pre><p>When trying to traverse the linked lists and line them up with their corresponding data structures, you need to recall that the linked lists are part of the <code>LDR_DATA_TABLE_ENTRY</code> itself and they aren’t pointers to a linked list. A <code>LIST_ENTRY</code> works by having the data attached below itself. To access the data within the entry, you typically use the <a href=https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/mm-bad-pointer#containing_record>CONTAINING_RECORD</a> macro, pass it the desired type, member field, and its pointer, and it will return a pointer to the data for you.
-<img src=../../files/list_entry.png alt="List entry"></p>
+<img src=../../files/eset-crackme-2017/list_entry.png alt="List entry"></p>
 <p>Rather than using the <code>CONTAINING_RECORD</code> macro, you can also manually compute the address by adding the size of <code>LIST_ENTRY</code> to its pointer.</p>
 <p>In the case of the <code>LDR_DATA_TABLE_ENTRY</code>, it looks like this:
-<img src=../../files/ldr_module.png alt="Ldr list entries"></p>
+<img src=../../files/eset-crackme-2017/ldr_module.png alt="Ldr list entries"></p>
 <p>Since IDA only sees the results of this macro being applied, you need to account for that in your structure definitions. In order for it to be mapped properly, you will need to define a custom <code>LDR_DATA_TABLE_ENTRY</code> without the <code>InLoadOrderLinks</code> and <code>InMemoryOrderLinks</code> fields. This is because our pointer is to the <code>InInitializationOrderLinks</code> list, so IDA will try to align the structure there instead at the top of the structure (<code>InLoadOrderLinks</code>).</p>
 <p>The next set of assembly in this function looks like this:</p>
 <pre tabindex=0><code>loc_40101D:

@@ -88,10 +88,10 @@ mov ecx, [eax+PEB.Ldr]
 mov edx, [ecx+PEB_LDR_DATA.InInitializationOrderModuleList.Flink]
 mov [ebp+peb_module_list], edx
 &lt;/code>&lt;/pre>&lt;p>When trying to traverse the linked lists and line them up with their corresponding data structures, you need to recall that the linked lists are part of the &lt;code>LDR_DATA_TABLE_ENTRY&lt;/code> itself and they aren’t pointers to a linked list. A &lt;code>LIST_ENTRY&lt;/code> works by having the data attached below itself. To access the data within the entry, you typically use the &lt;a href="https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/mm-bad-pointer#containing_record">CONTAINING_RECORD&lt;/a> macro, pass it the desired type, member field, and its pointer, and it will return a pointer to the data for you.
-&lt;img src="../../files/list_entry.png" alt="List entry">&lt;/p>
+&lt;img src="../../files/eset-crackme-2017/list_entry.png" alt="List entry">&lt;/p>
 &lt;p>Rather than using the &lt;code>CONTAINING_RECORD&lt;/code> macro, you can also manually compute the address by adding the size of &lt;code>LIST_ENTRY&lt;/code> to its pointer.&lt;/p>
 &lt;p>In the case of the &lt;code>LDR_DATA_TABLE_ENTRY&lt;/code>, it looks like this:
-&lt;img src="../../files/ldr_module.png" alt="Ldr list entries">&lt;/p>
+&lt;img src="../../files/eset-crackme-2017/ldr_module.png" alt="Ldr list entries">&lt;/p>
 &lt;p>Since IDA only sees the results of this macro being applied, you need to account for that in your structure definitions. In order for it to be mapped properly, you will need to define a custom &lt;code>LDR_DATA_TABLE_ENTRY&lt;/code> without the &lt;code>InLoadOrderLinks&lt;/code> and &lt;code>InMemoryOrderLinks&lt;/code> fields. This is because our pointer is to the &lt;code>InInitializationOrderLinks&lt;/code> list, so IDA will try to align the structure there instead at the top of the structure (&lt;code>InLoadOrderLinks&lt;/code>).&lt;/p>
 &lt;p>The next set of assembly in this function looks like this:&lt;/p>
 &lt;pre tabindex="0">&lt;code>loc_40101D:
