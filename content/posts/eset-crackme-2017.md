@@ -94,12 +94,12 @@ mov     [ebp+peb_module_list], edx
 ```
 
 When trying to traverse the linked lists and line them up with their corresponding data structures, you need to recall that the linked lists are part of the `LDR_DATA_TABLE_ENTRY` itself and they aren’t pointers to a linked list. A `LIST_ENTRY` works by having the data attached below itself. To access the data within the entry, you typically use the [CONTAINING_RECORD](https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/mm-bad-pointer#containing_record) macro, pass it the desired type, member field, and its pointer, and it will return a pointer to the data for you.
-![List entry](../../files/list_entry.png)
+![List entry](../../files/eset-crackme-2017/list_entry.png)
 
 Rather than using the `CONTAINING_RECORD` macro, you can also manually compute the address by adding the size of `LIST_ENTRY` to its pointer.
 
 In the case of the `LDR_DATA_TABLE_ENTRY`, it looks like this:
-![Ldr list entries](../../files/ldr_module.png)
+![Ldr list entries](../../files/eset-crackme-2017/ldr_module.png)
 
 Since IDA only sees the results of this macro being applied, you need to account for that in your structure definitions. In order for it to be mapped properly, you will need to define a custom `LDR_DATA_TABLE_ENTRY` without the `InLoadOrderLinks` and `InMemoryOrderLinks` fields. This is because our pointer is to the `InInitializationOrderLinks` list, so IDA will try to align the structure there instead at the top of the structure (`InLoadOrderLinks`).
 
