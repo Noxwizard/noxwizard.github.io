@@ -14,7 +14,7 @@ readingTime = false
 # Rebuilding PE files from sections
 Have you ever been in the unfortunate situation of having data sections from a PE file, but not the PE header itself and needed to recover it? Me neither. While attempting the [ESET crackme challenge](https://join.eset.com/en/challenges/crack-me), I mistakenly extracted the PE sections because 7z can do that apparently. Having only the text, data, and rdata sections, I set out to build a PE header that would load them correctly. This article may have errors along the way as it's a process of discovery. Any errors should be corrected at the very end where I discuss what I got right and wrong.
 
-For those playing along at home, the crackme.zip in this discussion came from May 2021 and has a MD5 hash of `429db63eb6937538f54dd94808a454df`. The file can be found on ESET’s site (until it's changed) or [here](../files/rebuilding-pe-files/crackme.zip).
+For those playing along at home, the crackme.zip in this discussion came from May 2021 and has a MD5 hash of `429db63eb6937538f54dd94808a454df`. The file can be found on ESET’s site (until it's changed) or [here](../../files/rebuilding-pe-files/crackme.zip).
 
 When we extract the .zip file with 7zip, we get the following files:
 | Name        | Size  |
@@ -37,7 +37,7 @@ Some of the tools I used on this project:
 
 ## What is a PE?
 A Portable Executable, a .exe file on Windows. A PE file is broken down into multiple parts:
-![PE layout](../files/rebuilding-pe-files/pe.png)
+![PE layout](../../files/rebuilding-pe-files/pe.png)
 
 At the most basic level, there is the PE header which describes the executable and then there’s everything else which actually does things related to the program itself. Microsoft has pretty decent documentation about the PE format on [MSDN](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format). Wikipedia’s documentation isn’t as good, but they have an excellent [diagram](https://en.wikipedia.org/wiki/File:Portable_Executable_32_bit_Structure_in_SVG_fixed.svg) that works nicely with the MSDN documentation.
 
@@ -75,7 +75,7 @@ Now that we have a basic understanding of what comprises a PE file, let’s take
 
 Next, let’s put the `.text` file into IDA (other tools are available) and make sure it’s usable. IDA was able to successfully disassemble the file into what looks like sensible instructions. These also appear to all be 32-bit registers, so this is probably a 32-bit binary.
 
-![disassembly](../files/rebuilding-pe-files/dis1.png)
+![disassembly](../../files/rebuilding-pe-files/dis1.png)
 
 
 ## Building the Headers
@@ -164,13 +164,13 @@ The only thing left is populating the `nt_header.OptionalHeader.DataDirectory` a
 ## Creating Sections
 Next up is the section table. One of the fields in the section entry is about the raw offset into the file. So let’s figure out what our file layout is probably going to look like. Looking at some other executables with CFF Explorer, the section ordering commonly seems to be: .text, .rdata, .data. Based on that, our layout should look like this:
 
-![PE layout with offsets](../files/rebuilding-pe-files/pe_layout.png)
+![PE layout with offsets](../../files/rebuilding-pe-files/pe_layout.png)
 
 The padding is necessary since we previously set our file alignment to 0x200. Conveniently, the other sections have sizes that fall on to the alignment. This means we have our raw offsets figured out. When a section gets loaded into memory, it gets loaded at a specific address in virtual memory. We get to choose that address, which means we need to figure out if those sections are expected to be at any specific address based on internal references (function addresses, global variable addresses, etc.).
 
 Let’s first look at some other binaries in CFF Explorer and see if there are any common starting addresses. I picked a couple of binaries at random and looked at the “Section Headers” section in CFF Explorer. The first section, which was usually `.text`, always had a Virtual Address which started at 0x1000. That seems like a reasonable place to put ours. While we’re looking at the sections, let’s see if there’s anything else we can take away from it.
 
-![PE sections of random binary](../files/rebuilding-pe-files/sections.png)
+![PE sections of random binary](../../files/rebuilding-pe-files/sections.png)
 
 This file also has a 0x1000 section alignment like ours does. Their `.text` section starts at 0x1000 and has a raw size of 0xE600. Something to note here is that it has a virtual size of 0xE482 and not 0xE600. This would indicate that this section was padded to reach its 0x200 file alignment boundary. Ours already all align, so our virtual sizes should all be the same as the raw size, which is nice.
 
@@ -188,7 +188,7 @@ For our sections, the addresses should be something like this:
 
 So our file layout now looks like this:
 
-![PE sections with virtual addresses](../files/rebuilding-pe-files/pe_va.png)
+![PE sections with virtual addresses](../../files/rebuilding-pe-files/pe_va.png)
 
 Seems reasonable. Now we need to make the section table entries for them. The Windows structure for this is [IMAGE_SECTION_HEADER](https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_section_header).
 
@@ -279,13 +279,13 @@ One thing humans are good at is recognizing patterns. This is very helpful when 
 
 When I did this the first time, I didn’t attempt to run the binary this early, so I didn’t really have a starting point other than seeing “kernel32.dll” referenced as text in one of the sections. This time though, we have a starting address to look at. IDA gave us an error saying that it tried to make a function call to the address stored at `0x412028`. First, we need to convert this to addresses and offsets we can look at. The RVA is `0x12028`, which places it 0x28 bytes into the `.rdata` section. That’s pretty close to the beginning, so let’s see what that chunk of the file looks like:
 
-![Imports hex dump](../files/rebuilding-pe-files/import1.png)
+![Imports hex dump](../../files/rebuilding-pe-files/import1.png)
 
 Remember that x86 uses little endian encoding, so you need to read the bytes in reverse. At 0x28, we see the `0x01722E` value that IDA was complaining about. If we look at the bytes around it, it looks like there’s a lot of other addresses like this one. So some kind of array of addresses.
 
 Let’s see if we can figure out what that’s pointing to. If we consider `0x01722E` as an RVA, that would put it 0x522E bytes into the `.rdata` section. So let’s take a look at that:
 
-![Imports hex dump @ 0x5200](../files/rebuilding-pe-files/import2.png)
+![Imports hex dump @ 0x5200](../../files/rebuilding-pe-files/import2.png)
 
 The part in blue highlighting is the referenced data. We see 2 bytes, followed by what looks like a function name. This was related to a `call` instruction, so that’s good. If we again look at the surrounding bytes, we see the same pattern (mostly) of 2 bytes, followed by a function name.
 
@@ -457,7 +457,7 @@ Well there we go. It’s not a RVA, it’s just abused to hold a file offset. If
 
 The [Load Configuration Directory](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#the-load-configuration-structure-image-only) entry is at 0x16B50, which maps to 0x4B50 in the .rdata file:
 
-![Load Configuration Directory hex dump](../files/rebuilding-pe-files/config_dir.png)
+![Load Configuration Directory hex dump](../../files/rebuilding-pe-files/config_dir.png)
 
 The documentation says this is related to Structured Exception Handling (SEH) and we did see references to SEH in the disassembly. This looks a little too sparse for us to have spotted it. With so many empty fields, it doesn’t really seem to match the directory layout described in the documentation. There is what looks like a Virtual Address of 0x418480 near the end. That points into the `.data` section at offset 0x480. There isn’t anything discernable there, just a series of bytes and I’m not sure how long it is or what structure it maps to. I guess this one will stay a mystery.
 
